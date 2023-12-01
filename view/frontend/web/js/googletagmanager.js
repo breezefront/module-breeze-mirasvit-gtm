@@ -143,9 +143,22 @@
             _.each(data.push, function (item) {
                 if (item) {
                     window.dataLayer.push({ecommerce: null});
-                    window.dataLayer.push(item);
+
+                    if (typeof gtag != 'undefined') {
+                        gtag(item[0], item[1], item[2]);
+                    } else {
+                        if (typeof item[0] != 'undefined') {
+                            var formatedObj = {};
+                            formatedObj[item[0]] = item[1];
+                            formatedObj['ecommerce'] = item[2];
+
+                            window.dataLayer.push(formatedObj);
+                        } else {
+                            window.dataLayer.push(item);
+                        }
+                    }
                 }
-            })
+            });
         }
     });
 
@@ -153,11 +166,11 @@
         component: 'Mirasvit_GoogleTagManager/js/event/addtocart',
 
         create: function () {
-            const gtm = customerData.get('mst-gtm-addtocart');
+            const tm = customerData.get('mst-tm-addtocart');
 
-            customerData.reload(['mst-gtm-addtocart'], false);
+            customerData.reload(['mst-tm-addtocart'], false);
 
-            this.subscription = gtm.subscribe(this.onUpdate);
+            this.subscription = tm.subscribe(this.onUpdate);
         },
 
         destroy: function () {
@@ -172,22 +185,17 @@
 
             _.each(data.push, function (item) {
 
-                var gtmStorageKey = '';
-                if (typeof item.gtm_id != 'undefined') {
-                    gtmStorageKey = item.gtm_id;
-                }
+                if (typeof item.analytics_type == 'undefined' || item.analytics_type == '') {
+                    let gtmStorageKey = '';
 
-                if (item && typeof item.gtm_id != 'undefined' && !mstGtmStorage.includes(gtmStorageKey)) {
+                    if (typeof item.gtm_id != 'undefined') {
+                        gtmStorageKey = item.gtm_id;
+                    }
 
-                    window.dataLayer.push({ecommerce: null});
+                    if (item && typeof item.gtm_id != 'undefined' && !mstGtmStorage.includes(gtmStorageKey)) {
 
-                    if (typeof item.analytics_type != 'undefined' && item.analytics_type == 'ga3') {
-                        window.dataLayer.push(item);
-                    } else if (typeof item.analytics_type != 'undefined' && item.analytics_type == 'fbpixel') {
-                        if (typeof fbq != 'undefined') {
-                            fbq(item[0], item[1], item[2]);
-                        }
-                    } else {
+                        window.dataLayer.push({ecommerce: null});
+
                         if (typeof gtag != 'undefined') {
                             gtag(item[0], item[1], item[2]);
                         } else {
@@ -198,9 +206,9 @@
                             window.dataLayer.push(formatedObj);
                         }
                     }
-                }
 
-                mstGtmStorage.push(gtmStorageKey);
+                    mstGtmStorage.push(gtmStorageKey);
+                }
             });
 
             window.sessionStorage.setItem("mst_gtm", mstGtmStorage.join('|'));
@@ -320,26 +328,17 @@
 
             let productId = productIds[0];
 
-            let ga3Data = {
-                'event': 'ga3_productClick',
-                'ecommerce': {
-                    'click': {
-                        'actionField': {'list': listName},      // Optional list property.
-                        'products': [window.mstGtmProducts[productId]]
-                    }
-                }
+            window.dataLayer.push({ ecommerce: null });  // Clear the previous ecommerce object.
+
+            var formatedObj = {};
+            formatedObj['event'] = 'select_item';
+            formatedObj['ecommerce'] = {
+                item_list_id: listId,
+                item_list_name: listName,
+                items: [window.mstGtmProducts[productId]]
             };
 
-            window.dataLayer.push({ ecommerce: null });  // Clear the previous ecommerce object.
-            window.dataLayer.push(ga3Data);
-
-            window.dataLayer.push({ ecommerce: null });  // Clear the previous ecommerce object.
-            gtag('event', 'select_item', {
-                    item_list_id: listId,
-                    item_list_name: listName,
-                    items: [window.mstGtmProducts[productId]]
-                }
-            );
+            window.dataLayer.push(formatedObj);
         }
     });
 
@@ -470,18 +469,6 @@
                 items.push(item);
             }.bind(this));
 
-            let ga3Data = {
-                'event':     'ga3_promotionClick',
-                'ecommerce': {
-                    'promoClick':  {
-                        promotions: items
-                    }
-                }
-            };
-
-            window.dataLayer.push({ecommerce: null});  // Clear the previous ecommerce object.
-            window.dataLayer.push(ga3Data);
-
             let eventItems = {items: items};
 
             _.each($eventEl[0].attributes, function (attr) {
@@ -586,18 +573,6 @@
                     items.push(item);
                 }.bind(this));
 
-                let ga3Data = {
-                    'event': 'ga3_promotionView',
-                    'ecommerce': {
-                        'promoView':  {
-                            promotions: items
-                        }
-                    }
-                };
-
-                window.dataLayer.push({ecommerce: null});  // Clear the previous ecommerce object.
-                window.dataLayer.push(ga3Data);
-
                 let eventItems = {items: items};
 
                 _.each($eventEl[0].attributes, function (attr) {
@@ -608,14 +583,13 @@
                     }
                 }.bind(this));
 
-                let ga4Data = {
-                    0: 'event',
-                    1: 'view_promotion',
-                    2: eventItems
-                };
-
                 window.dataLayer.push({ecommerce: null});  // Clear the previous ecommerce object.
-                gtag('event', 'view_promotion', eventItems);
+
+                var formatedObj = {};
+                formatedObj['event'] = 'view_promotion';
+                formatedObj['ecommerce'] = eventItems;
+
+                window.dataLayer.push(formatedObj);
             }
         }
     });
@@ -628,10 +602,52 @@
             this.itemList = new ItemList();
             this.selectPromotion = new SelectPromotion();
             this.viewPromotion = new ViewPromotion();
+
+            var intervalId = setInterval(function() {
+                if (typeof window.isGtmLoaded != 'undefined') {
+                    if (typeof window.dataLayer != 'undefined' && window.dataLayer.length) {
+                        let isError = !window.isGtmLoaded;
+
+                        this.saveLogs(isError);
+                    }
+
+                    clearInterval(intervalId);
+                }
+            }.bind(this), 100);
         },
 
         destroy: function () {
             this.viewPromotion.destroy();
+        },
+
+        saveLogs: function (isError) {
+            let logEvents = ['add_to_cart', 'view_cart', 'begin_checkout', 'purchase', 'conversion'];
+            let data = [];
+
+            _.each(window.dataLayer, function (item) {
+                if (logEvents.includes(item.event)) {
+                    data.push(item);
+                }
+            });
+
+            $.ajax({
+                url:      this.options.logsUrl,
+                type:     'POST',
+                dataType: 'json',
+                data:     {isError: isError, data: data},
+
+                success: function (response) {
+                    if (typeof response.data != 'undefined') {
+                        for (var i in response.data) {
+                            window.mstGtmProducts[response.data[i]['product_id']] = response.data[i];
+                        }
+                    }
+                    this.isLoading = false;
+
+                    // instead of $(document).ready()
+                    $(document).trigger('mst-gtm-init-products');
+                }.bind(this)
+            });
         }
     });
 
@@ -686,7 +702,7 @@
 
             let index = 1;
             _.each(window.dataLayer, function (data) {
-                if (!data.event) {
+                if (!data.event && !data[0]) {
                     return;
                 }
 
@@ -710,12 +726,10 @@
 
         getWrapperHtml: function () {
             return '' +
-                '<div class="mst-gtm__toolbar">\n' +
-                '    <strong>Google Tag Manager</strong>\n' +
-                '\n' +
-                '    <div class="mst-gtm__toolbar-body">\n' +
-                '    </div>\n' +
-                '</div>\n';
+                '<div class="mst-gtm__toolbar">' +
+                '    <strong>Google Tag Manager</strong>' +
+                '    <div class="mst-gtm__toolbar-body"></div>' +
+                '</div>';
         },
 
         displayData: function ($data) {
@@ -726,6 +740,42 @@
                 .html($data);
 
             $('body').append($t)
+        }
+    });
+
+    $.mixin('SwatchRenderer', {
+        _Rebuild: function (original) {
+            original();
+
+            let products = this._CalcProducts();
+            if (products.length === 1 && typeof window.mstGtmProductVariants != 'undefined') {
+                if (typeof window.mstGtmProductVariants[products[0]] != 'undefined') {
+                    _.each(window.mstGtmProductVariants[products[0]], function (item) {
+
+                        var gtmStorageKey = '';
+                        if (typeof item.gtm_id != 'undefined') {
+                            gtmStorageKey = item.gtm_id;
+                        }
+
+                        if (item && typeof item.gtm_id != 'undefined') {
+
+                            window.dataLayer.push({ecommerce: null});
+
+                            if (typeof gtag != 'undefined') {
+                                gtag(item[0], item[1], item[2]);
+                            } else {
+                                var formatedObj = {};
+                                formatedObj[item[0]] = item[1];
+                                formatedObj['ecommerce'] = item[2];
+
+                                window.dataLayer.push(formatedObj);
+                            }
+                        }
+                    });
+                }
+            }
+
+            return this;
         }
     });
 })();
