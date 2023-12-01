@@ -2,7 +2,7 @@
     "name": "swissup/module-breeze-mirasvit-gtm",
     "description": "Mirasvit GoogleTagManager integration with Breeze Frontend",
     "type": "magento2-module",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "license": "OSL-3.0",
     "autoload": {
         "files": [
