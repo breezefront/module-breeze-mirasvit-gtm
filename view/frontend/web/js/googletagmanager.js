@@ -127,9 +127,9 @@
         component: 'Mirasvit_GoogleTagManager/js/layer',
 
         create: function () {
-            const gtm = customerData.get('gtm');
+            const gtm = $.customerData.get('gtm');
 
-            customerData.reload(['gtm'], false);
+            $.customerData.reload(['gtm'], false);
 
             this.subscription = gtm.subscribe(this.onUpdate);
         },
@@ -166,9 +166,9 @@
         component: 'Mirasvit_GoogleTagManager/js/event/addtocart',
 
         create: function () {
-            const tm = customerData.get('mst-tm-addtocart');
+            const tm = $.customerData.get('mst-tm-addtocart');
 
-            customerData.reload(['mst-tm-addtocart'], false);
+            $.customerData.reload(['mst-tm-addtocart'], false);
 
             this.subscription = tm.subscribe(this.onUpdate);
         },
