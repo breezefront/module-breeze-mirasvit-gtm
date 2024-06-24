@@ -1,8 +1,10 @@
 # Breeze Mirasvit GoogleTagManager
 
-## Installation
+This repo is archived. Please, use the
+[newer integration](https://packagist.org/packages/aqeltech/module-breeze-mirasvit-gtm)
+made by AQELTech:
 
 ```bash
-composer require swissup/module-breeze-mirasvit-gtm
-bin/magento setup:upgrade --safe-mode=1
+composer require aqeltech/module-breeze-mirasvit-gtm
+bin/magento module:enable AQELTech_BreezeMirasvitGTM
 ```
